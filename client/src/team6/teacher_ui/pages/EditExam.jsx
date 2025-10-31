@@ -1,33 +1,33 @@
-import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { mockExams } from '../../data/mockData';
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { mockExams } from "../../data/mockData";
 
 const EditExam = () => {
   const { course_id, exam_id } = useParams();
   const navigate = useNavigate();
-  
-  const exam = mockExams.find(e => e.id === parseInt(exam_id));
-  
+
+  const exam = mockExams.find((e) => e.id === parseInt(exam_id));
+
   const [formData, setFormData] = useState({
-    title: exam?.title || '',
-    description: exam?.description || '',
-    examDate: exam?.examDate || '',
-    duration: exam?.duration || '',
-    totalMarks: exam?.totalMarks || ''
+    title: exam?.title || "",
+    description: exam?.description || "",
+    examDate: exam?.examDate || "",
+    duration: exam?.duration || "",
+    totalMarks: exam?.totalMarks || "",
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Updated exam:', formData);
-    alert('Шалгалтын мэдээлэл амжилттай шинэчлэгдлээ!');
+    console.log("Updated exam:", formData);
+    alert("Шалгалтын мэдээлэл амжилттай шинэчлэгдлээ!");
     navigate(`/team6/teacher/courses/${course_id}/exams/${exam_id}`);
   };
 
@@ -35,8 +35,13 @@ const EditExam = () => {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Шалгалт олдсонгүй</h2>
-          <Link to={`/team6/teacher/courses/${course_id}/exams`} className="text-black hover:underline">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Шалгалт олдсонгүй
+          </h2>
+          <Link
+            to={`/team6/teacher/courses/${course_id}/exams`}
+            className="text-black hover:underline"
+          >
             Буцах
           </Link>
         </div>

@@ -1,34 +1,39 @@
-import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { mockExams, mockVariants, mockQuestionBank } from '../../data/mockData';
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { mockExams, mockVariants, mockQuestionBank } from "../../data/mockData";
 
 const EditVariant = () => {
   const { course_id, exam_id, variant_id } = useParams();
   const navigate = useNavigate();
-  
-  const exam = mockExams.find(e => e.id === parseInt(exam_id));
-  const variant = mockVariants.find(v => v.id === parseInt(variant_id));
-  const existingQuestions = variant?.questionIds?.map(id => mockQuestionBank.find(q => q.id === id)).filter(Boolean) || [];
-  
-  const [variantName, setVariantName] = useState(variant?.name || '');
+
+  const exam = mockExams.find((e) => e.id === parseInt(exam_id));
+  const variant = mockVariants.find((v) => v.id === parseInt(variant_id));
+  const existingQuestions =
+    variant?.questionIds
+      ?.map((id) => mockQuestionBank.find((q) => q.id === id))
+      .filter(Boolean) || [];
+
+  const [variantName, setVariantName] = useState(variant?.name || "");
   const [questions, setQuestions] = useState(
-    existingQuestions.length > 0 
-      ? existingQuestions.map(q => ({
+    existingQuestions.length > 0
+      ? existingQuestions.map((q) => ({
           id: q.id,
           questionText: q.question,
           questionType: q.type,
-          options: q.options || ['', '', '', ''],
-          correctAnswer: q.correctAnswers?.[0] || '',
-          marks: q.marks
+          options: q.options || ["", "", "", ""],
+          correctAnswer: q.correctAnswers?.[0] || "",
+          marks: q.marks,
         }))
-      : [{
-          id: Date.now(),
-          questionText: '',
-          questionType: 'multiple_choice',
-          options: ['', '', '', ''],
-          correctAnswer: '',
-          marks: 5
-        }]
+      : [
+          {
+            id: Date.now(),
+            questionText: "",
+            questionType: "multiple_choice",
+            options: ["", "", "", ""],
+            correctAnswer: "",
+            marks: 5,
+          },
+        ]
   );
 
   const addQuestion = () => {
@@ -36,51 +41,60 @@ const EditVariant = () => {
       ...questions,
       {
         id: Date.now(),
-        questionText: '',
-        questionType: 'multiple_choice',
-        options: ['', '', '', ''],
-        correctAnswer: '',
-        marks: 5
-      }
+        questionText: "",
+        questionType: "multiple_choice",
+        options: ["", "", "", ""],
+        correctAnswer: "",
+        marks: 5,
+      },
     ]);
   };
 
   const removeQuestion = (id) => {
     if (questions.length > 1) {
-      setQuestions(questions.filter(q => q.id !== id));
+      setQuestions(questions.filter((q) => q.id !== id));
     }
   };
 
   const updateQuestion = (id, field, value) => {
-    setQuestions(questions.map(q => 
-      q.id === id ? { ...q, [field]: value } : q
-    ));
+    setQuestions(
+      questions.map((q) => (q.id === id ? { ...q, [field]: value } : q))
+    );
   };
 
   const updateOption = (questionId, optionIndex, value) => {
-    setQuestions(questions.map(q => {
-      if (q.id === questionId) {
-        const newOptions = [...q.options];
-        newOptions[optionIndex] = value;
-        return { ...q, options: newOptions };
-      }
-      return q;
-    }));
+    setQuestions(
+      questions.map((q) => {
+        if (q.id === questionId) {
+          const newOptions = [...q.options];
+          newOptions[optionIndex] = value;
+          return { ...q, options: newOptions };
+        }
+        return q;
+      })
+    );
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Updated variant:', { name: variantName, questions });
-    alert('Хувилбар амжилттай шинэчлэгдлээ!');
-    navigate(`/team6/teacher/courses/${course_id}/exams/${exam_id}/variants/${variant_id}`);
+    console.log("Updated variant:", { name: variantName, questions });
+    alert("Хувилбар амжилттай шинэчлэгдлээ!");
+    navigate(
+      `/team6/teacher/courses/${course_id}/exams/${exam_id}/variants/${variant_id}`
+    );
   };
 
   if (!exam || !variant) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Хувилбар олдсонгүй</h2>
-          <Link to={`/team6/teacher/courses/${course_id}/exams/${exam_id}/variants`} className="text-black hover:underline">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Хувилбар олдсонгүй
+          </h2>
+          <Link
+            to={`/team6/teacher/courses/${course_id}/exams/${exam_id}/variants`}
+            className="text-black hover:underline"
+          >
             Буцах
           </Link>
         </div>
@@ -98,7 +112,9 @@ const EditVariant = () => {
           >
             ← Буцах
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Хувилбар засах</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Хувилбар засах
+          </h1>
           <p className="text-gray-600">{exam.title}</p>
         </div>
 
@@ -121,9 +137,14 @@ const EditVariant = () => {
           {/* Questions */}
           <div className="space-y-4">
             {questions.map((question, qIndex) => (
-              <div key={question.id} className="bg-white rounded-lg shadow-sm p-6">
+              <div
+                key={question.id}
+                className="bg-white rounded-lg shadow-sm p-6"
+              >
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Асуулт {qIndex + 1}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Асуулт {qIndex + 1}
+                  </h3>
                   {questions.length > 1 && (
                     <button
                       type="button"
@@ -143,7 +164,13 @@ const EditVariant = () => {
                     </label>
                     <textarea
                       value={question.questionText}
-                      onChange={(e) => updateQuestion(question.id, 'questionText', e.target.value)}
+                      onChange={(e) =>
+                        updateQuestion(
+                          question.id,
+                          "questionText",
+                          e.target.value
+                        )
+                      }
                       required
                       rows="3"
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
@@ -159,7 +186,13 @@ const EditVariant = () => {
                       </label>
                       <select
                         value={question.questionType}
-                        onChange={(e) => updateQuestion(question.id, 'questionType', e.target.value)}
+                        onChange={(e) =>
+                          updateQuestion(
+                            question.id,
+                            "questionType",
+                            e.target.value
+                          )
+                        }
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
                       >
                         <option value="multiple_choice">Сонгох</option>
@@ -175,7 +208,13 @@ const EditVariant = () => {
                       <input
                         type="number"
                         value={question.marks}
-                        onChange={(e) => updateQuestion(question.id, 'marks', parseInt(e.target.value))}
+                        onChange={(e) =>
+                          updateQuestion(
+                            question.id,
+                            "marks",
+                            parseInt(e.target.value)
+                          )
+                        }
                         required
                         min="1"
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
@@ -184,7 +223,7 @@ const EditVariant = () => {
                   </div>
 
                   {/* Options for multiple choice */}
-                  {question.questionType === 'multiple_choice' && (
+                  {question.questionType === "multiple_choice" && (
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-2">
                         Хариултууд *
@@ -195,7 +234,13 @@ const EditVariant = () => {
                             key={optIndex}
                             type="text"
                             value={option}
-                            onChange={(e) => updateOption(question.id, optIndex, e.target.value)}
+                            onChange={(e) =>
+                              updateOption(
+                                question.id,
+                                optIndex,
+                                e.target.value
+                              )
+                            }
                             required
                             className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
                             placeholder={`Хариулт ${optIndex + 1}`}
@@ -210,23 +255,39 @@ const EditVariant = () => {
                     <label className="block text-sm font-medium text-gray-900 mb-2">
                       Зөв хариулт *
                     </label>
-                    {question.questionType === 'multiple_choice' ? (
+                    {question.questionType === "multiple_choice" ? (
                       <select
                         value={question.correctAnswer}
-                        onChange={(e) => updateQuestion(question.id, 'correctAnswer', e.target.value)}
+                        onChange={(e) =>
+                          updateQuestion(
+                            question.id,
+                            "correctAnswer",
+                            e.target.value
+                          )
+                        }
                         required
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
                       >
                         <option value="">Сонгох...</option>
-                        {question.options.filter(opt => opt).map((option, idx) => (
-                          <option key={idx} value={option}>{option}</option>
-                        ))}
+                        {question.options
+                          .filter((opt) => opt)
+                          .map((option, idx) => (
+                            <option key={idx} value={option}>
+                              {option}
+                            </option>
+                          ))}
                       </select>
                     ) : (
                       <input
                         type="text"
                         value={question.correctAnswer}
-                        onChange={(e) => updateQuestion(question.id, 'correctAnswer', e.target.value)}
+                        onChange={(e) =>
+                          updateQuestion(
+                            question.id,
+                            "correctAnswer",
+                            e.target.value
+                          )
+                        }
                         required
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
                         placeholder="Зөв хариулт"

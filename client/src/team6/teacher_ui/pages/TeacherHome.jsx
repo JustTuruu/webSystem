@@ -1,5 +1,10 @@
-import { Link } from 'react-router-dom';
-import { mockCourses, mockExams, mockQuestionBank, mockTopics } from '../../data/mockData';
+import { Link } from "react-router-dom";
+import {
+  mockCourses,
+  mockExams,
+  mockQuestionBank,
+  mockTopics,
+} from "../../data/mockData";
 
 const TeacherHome = () => {
   // Calculate statistics
@@ -14,8 +19,12 @@ const TeacherHome = () => {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">👨‍🏫 Багшийн систем</h1>
-              <p className="text-gray-600 mt-1">Шалгалт удирдах, асуултын сангаас сонгох</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                👨‍🏫 Багшийн систем
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Шалгалт удирдах, асуултын сангаас сонгох
+              </p>
             </div>
             <Link
               to="/team6"
@@ -37,7 +46,9 @@ const TeacherHome = () => {
               </div>
               <div>
                 <div className="text-xs text-gray-600">Нийт хичээл</div>
-                <div className="text-xl font-bold text-gray-900">{mockCourses.length}</div>
+                <div className="text-xl font-bold text-gray-900">
+                  {mockCourses.length}
+                </div>
               </div>
             </div>
           </div>
@@ -49,7 +60,9 @@ const TeacherHome = () => {
               </div>
               <div>
                 <div className="text-xs text-gray-600">Сэдвүүд</div>
-                <div className="text-xl font-bold text-gray-900">{totalTopics}</div>
+                <div className="text-xl font-bold text-gray-900">
+                  {totalTopics}
+                </div>
               </div>
             </div>
           </div>
@@ -61,7 +74,9 @@ const TeacherHome = () => {
               </div>
               <div>
                 <div className="text-xs text-gray-600">Нийт шалгалт</div>
-                <div className="text-xl font-bold text-gray-900">{totalExams}</div>
+                <div className="text-xl font-bold text-gray-900">
+                  {totalExams}
+                </div>
               </div>
             </div>
           </div>
@@ -73,7 +88,9 @@ const TeacherHome = () => {
               </div>
               <div>
                 <div className="text-xs text-gray-600">Асуултын сан</div>
-                <div className="text-xl font-bold text-gray-900">{totalQuestions}</div>
+                <div className="text-xl font-bold text-gray-900">
+                  {totalQuestions}
+                </div>
               </div>
             </div>
           </div>
@@ -99,14 +116,20 @@ const TeacherHome = () => {
                         {course.name} - Шалгалтын жагсаалт
                       </div>
                       <div className="text-sm text-gray-600">
-                        {mockExams.filter(e => e.courseId === course.id).length} шалгалт
+                        {
+                          mockExams.filter((e) => e.courseId === course.id)
+                            .length
+                        }{" "}
+                        шалгалт
                       </div>
                     </div>
-                    <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                    <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                      →
+                    </span>
                   </div>
                 </Link>
               ))}
-              
+
               <Link
                 to={`/team6/teacher/courses/1/exams/create`}
                 className="block p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-black hover:bg-gray-50 transition-all group"
@@ -116,9 +139,13 @@ const TeacherHome = () => {
                     <div className="font-semibold text-gray-900 group-hover:text-black flex items-center gap-2">
                       <span>➕</span> Шинэ шалгалт үүсгэх
                     </div>
-                    <div className="text-sm text-gray-600">Асуултын сангаас сонгох</div>
+                    <div className="text-sm text-gray-600">
+                      Асуултын сангаас сонгох
+                    </div>
                   </div>
-                  <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                  <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                    →
+                  </span>
                 </div>
               </Link>
 
@@ -133,9 +160,13 @@ const TeacherHome = () => {
                         <div className="font-semibold text-gray-900 group-hover:text-black">
                           Шалгалтын мэдээлэл харах
                         </div>
-                        <div className="text-sm text-gray-600">Дэлгэрэнгүй мэдээлэл, тохиргоо</div>
+                        <div className="text-sm text-gray-600">
+                          Дэлгэрэнгүй мэдээлэл, тохиргоо
+                        </div>
                       </div>
-                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                        →
+                      </span>
                     </div>
                   </Link>
 
@@ -148,9 +179,13 @@ const TeacherHome = () => {
                         <div className="font-semibold text-gray-900 group-hover:text-black flex items-center gap-2">
                           <span>✏️</span> Шалгалт засах
                         </div>
-                        <div className="text-sm text-gray-600">Сэдэв, асуулт, тохиргоо засах</div>
+                        <div className="text-sm text-gray-600">
+                          Сэдэв, асуулт, тохиргоо засах
+                        </div>
                       </div>
-                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                        →
+                      </span>
                     </div>
                   </Link>
 
@@ -163,9 +198,13 @@ const TeacherHome = () => {
                         <div className="font-semibold text-gray-900 group-hover:text-black flex items-center gap-2">
                           <span>📊</span> Шалгалтын тайлан
                         </div>
-                        <div className="text-sm text-gray-600">Статистик, үр дүн харах</div>
+                        <div className="text-sm text-gray-600">
+                          Статистик, үр дүн харах
+                        </div>
                       </div>
-                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                        →
+                      </span>
                     </div>
                   </Link>
                 </>
@@ -190,9 +229,13 @@ const TeacherHome = () => {
                         <div className="font-semibold text-gray-900 group-hover:text-black">
                           Вариантын жагсаалт
                         </div>
-                        <div className="text-sm text-gray-600">Бүх вариантууд харах</div>
+                        <div className="text-sm text-gray-600">
+                          Бүх вариантууд харах
+                        </div>
                       </div>
-                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                        →
+                      </span>
                     </div>
                   </Link>
 
@@ -205,9 +248,13 @@ const TeacherHome = () => {
                         <div className="font-semibold text-gray-900 group-hover:text-black flex items-center gap-2">
                           <span>➕</span> Вариант нэмэх
                         </div>
-                        <div className="text-sm text-gray-600">Санамсаргүй асуулт сонгох</div>
+                        <div className="text-sm text-gray-600">
+                          Санамсаргүй асуулт сонгох
+                        </div>
                       </div>
-                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                        →
+                      </span>
                     </div>
                   </Link>
 
@@ -220,9 +267,13 @@ const TeacherHome = () => {
                         <div className="font-semibold text-gray-900 group-hover:text-black">
                           Вариант харах
                         </div>
-                        <div className="text-sm text-gray-600">Асуултууд, хариултууд харах</div>
+                        <div className="text-sm text-gray-600">
+                          Асуултууд, хариултууд харах
+                        </div>
                       </div>
-                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                        →
+                      </span>
                     </div>
                   </Link>
 
@@ -235,9 +286,13 @@ const TeacherHome = () => {
                         <div className="font-semibold text-gray-900 group-hover:text-black flex items-center gap-2">
                           <span>✏️</span> Вариант засах
                         </div>
-                        <div className="text-sm text-gray-600">Асуулт солих, засах</div>
+                        <div className="text-sm text-gray-600">
+                          Асуулт солих, засах
+                        </div>
                       </div>
-                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">→</span>
+                      <span className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
+                        →
+                      </span>
                     </div>
                   </Link>
                 </>
@@ -254,7 +309,8 @@ const TeacherHome = () => {
                 <span className="text-3xl">🗃️</span> Асуултын сан
               </h2>
               <p className="text-purple-100 mb-4">
-                Олон төрлийн асуултууд: Сонгох, олон зөв хариулт, өгүүлбэр нөхөх, бичгээр хариулах
+                Олон төрлийн асуултууд: Сонгох, олон зөв хариулт, өгүүлбэр
+                нөхөх, бичгээр хариулах
               </p>
               <ul className="space-y-2 text-sm text-purple-100 mb-6">
                 <li className="flex items-center gap-2">
@@ -274,12 +330,9 @@ const TeacherHome = () => {
                 Асуултын сан нээх →
               </Link>
             </div>
-            <div className="hidden lg:block text-8xl opacity-20">
-              ❓
-            </div>
+            <div className="hidden lg:block text-8xl opacity-20">❓</div>
           </div>
         </div>
-
       </div>
     </div>
   );

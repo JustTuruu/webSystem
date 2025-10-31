@@ -1,19 +1,19 @@
-import { useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import { mockCourses, mockTopics, mockQuestionBank } from '../../data/mockData';
+import { useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { mockCourses, mockTopics, mockQuestionBank } from "../../data/mockData";
 
 const CreateExam = () => {
   const { course_id } = useParams();
   const navigate = useNavigate();
-  
-  const course = mockCourses.find(c => c.id === parseInt(course_id));
-  const topics = mockTopics.filter(t => t.courseId === parseInt(course_id));
+
+  const course = mockCourses.find((c) => c.id === parseInt(course_id));
+  const topics = mockTopics.filter((t) => t.courseId === parseInt(course_id));
 
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    startDate: '',
-    startTime: '',
+    title: "",
+    description: "",
+    startDate: "",
+    startTime: "",
     duration: 120,
     totalMarks: 100,
     passingMarks: 50,
@@ -24,7 +24,7 @@ const CreateExam = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleTopicCountChange = (topicId, count) => {
@@ -34,25 +34,30 @@ const CreateExam = () => {
       delete newSelection[topicId];
       setSelectedTopics(newSelection);
     } else {
-      setSelectedTopics(prev => ({
+      setSelectedTopics((prev) => ({
         ...prev,
-        [topicId]: numCount
+        [topicId]: numCount,
       }));
     }
   };
 
   // Calculate totals
-  const totalQuestions = Object.values(selectedTopics).reduce((sum, count) => sum + count, 0);
-  const selectedTopicsList = Object.entries(selectedTopics).map(([topicId, count]) => ({
-    topicId: parseInt(topicId),
-    questionCount: count,
-  }));
+  const totalQuestions = Object.values(selectedTopics).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+  const selectedTopicsList = Object.entries(selectedTopics).map(
+    ([topicId, count]) => ({
+      topicId: parseInt(topicId),
+      questionCount: count,
+    })
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (totalQuestions === 0) {
-      alert('Хамгийн багадаа 1 асуулт сонгоно уу!');
+      alert("Хамгийн багадаа 1 асуулт сонгоно уу!");
       return;
     }
 
@@ -61,12 +66,14 @@ const CreateExam = () => {
       courseId: parseInt(course_id),
       selectedTopics: selectedTopicsList,
       totalQuestions,
-      status: 'upcoming',
+      status: "upcoming",
       createdAt: new Date().toISOString(),
     };
 
-    console.log('Exam created:', examData);
-    alert(`Шалгалт амжилттай үүсгэлээ! Нийт ${totalQuestions} асуулт сонгогдлоо.`);
+    console.log("Exam created:", examData);
+    alert(
+      `Шалгалт амжилттай үүсгэлээ! Нийт ${totalQuestions} асуулт сонгогдлоо.`
+    );
     navigate(`/team6/teacher/courses/${course_id}/exams`);
   };
 
@@ -81,15 +88,21 @@ const CreateExam = () => {
           >
             ← Буцах
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Шинэ шалгалт үүсгэх</h1>
-          <p className="text-gray-600">{course?.name} - Банкнаас асуулт сонгох</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Шинэ шалгалт үүсгэх
+          </h1>
+          <p className="text-gray-600">
+            {course?.name} - Банкнаас асуулт сонгох
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
           <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Үндсэн мэдээлэл</h2>
-            
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Үндсэн мэдээлэл
+            </h2>
+
             <div className="space-y-4">
               {/* Title */}
               <div>
@@ -204,8 +217,12 @@ const CreateExam = () => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Асуултын банкнаас сонгох</h2>
-                <p className="text-sm text-gray-600 mt-1">Сэдэв бүрээс хэдэн асуулт авахаа сонгоно уу</p>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Асуултын банкнаас сонгох
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Сэдэв бүрээс хэдэн асуулт авахаа сонгоно уу
+                </p>
               </div>
               <Link
                 to="/team6/teacher/question-bank"
@@ -222,23 +239,29 @@ const CreateExam = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {topics.map(topic => {
-                  const availableQuestions = mockQuestionBank.filter(q => q.topicId === topic.id);
+                {topics.map((topic) => {
+                  const availableQuestions = mockQuestionBank.filter(
+                    (q) => q.topicId === topic.id
+                  );
                   const selectedCount = selectedTopics[topic.id] || 0;
-                  
+
                   return (
                     <div
                       key={topic.id}
                       className={`p-4 rounded-lg border-2 transition-all ${
                         selectedCount > 0
-                          ? 'border-black bg-gray-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? "border-black bg-gray-50"
+                          : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 mb-1">{topic.name}</h3>
-                          <p className="text-sm text-gray-600">{topic.description}</p>
+                          <h3 className="font-semibold text-gray-900 mb-1">
+                            {topic.name}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {topic.description}
+                          </p>
                           <div className="text-xs text-gray-500 mt-2">
                             Банкинд байгаа: {availableQuestions.length} асуулт
                           </div>
@@ -253,13 +276,17 @@ const CreateExam = () => {
                               min="0"
                               max={availableQuestions.length}
                               value={selectedCount}
-                              onChange={(e) => handleTopicCountChange(topic.id, e.target.value)}
+                              onChange={(e) =>
+                                handleTopicCountChange(topic.id, e.target.value)
+                              }
                               className="w-24 px-3 py-2 border-2 border-gray-200 rounded-lg text-center focus:border-black focus:outline-none"
                               placeholder="0"
                             />
                           </div>
                           {selectedCount > 0 && (
-                            <div className="text-green-600 font-bold text-lg">✓</div>
+                            <div className="text-green-600 font-bold text-lg">
+                              ✓
+                            </div>
                           )}
                         </div>
                       </div>
@@ -274,12 +301,17 @@ const CreateExam = () => {
               <div className="mt-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-semibold text-blue-900">Нийт сонгогдсон асуулт</div>
+                    <div className="font-semibold text-blue-900">
+                      Нийт сонгогдсон асуулт
+                    </div>
                     <div className="text-sm text-blue-700 mt-1">
-                      {selectedTopicsList.length} сэдвээс {totalQuestions} асуулт
+                      {selectedTopicsList.length} сэдвээс {totalQuestions}{" "}
+                      асуулт
                     </div>
                   </div>
-                  <div className="text-3xl font-bold text-blue-900">{totalQuestions}</div>
+                  <div className="text-3xl font-bold text-blue-900">
+                    {totalQuestions}
+                  </div>
                 </div>
               </div>
             )}
