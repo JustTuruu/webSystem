@@ -1,20 +1,44 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { mockExams } from "../../data/mockData";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const EditExam = () => {
   const { course_id, exam_id } = useParams();
   const navigate = useNavigate();
 
-  const exam = mockExams.find((e) => e.id === parseInt(exam_id));
-
   const [formData, setFormData] = useState({
-    title: exam?.title || "",
-    description: exam?.description || "",
-    examDate: exam?.examDate || "",
-    duration: exam?.duration || "",
-    totalMarks: exam?.totalMarks || "",
+    title: "",
+    description: "",
+    examDate: "",
+    duration: "",
+    totalMarks: "",
   });
+
+  const [loading, setLoading] = useState(true);
+  const [exam, setExam] = useState(null);
+
+  useEffect(() => {
+    const loadExam = async () => {
+      try {
+        const data = await fetchData(`${BASE_URL}/exams/${exam_id}`, "GET");
+        setExam(data);
+        setFormData({
+          title: data?.title || "",
+          description: data?.description || "",
+          examDate: data?.startDate || "",
+          duration: data?.duration || "",
+          totalMarks: data?.totalMarks || "",
+        });
+      } catch (error) {
+        console.error("⚠️ Failed to load exam:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadExam();
+  }, [exam_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -24,12 +48,47 @@ const EditExam = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Updated exam:", formData);
-    alert("Шалгалтын мэдээлэл амжилттай шинэчлэгдлээ!");
-    navigate(`/team6/teacher/courses/${course_id}/exams/${exam_id}`);
+
+    if (!formData.title.trim()) {
+      alert("Шалгалтын нэр оруулна уу!");
+      return;
+    }
+
+    try {
+      const payload = {
+        ...exam,
+        title: formData.title,
+        description: formData.description,
+        startDate: formData.examDate,
+        duration: parseInt(formData.duration),
+        totalMarks: parseInt(formData.totalMarks),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const updated = await fetchData(
+        `${BASE_URL}/exams/${exam_id}`,
+        "PUT",
+        payload
+      );
+
+      console.log("✅ Exam updated:", updated);
+      alert("Шалгалтын мэдээлэл амжилттай шинэчлэгдлээ!");
+      navigate(`/team6/teacher/courses/${course_id}/exams/${exam_id}`);
+    } catch (error) {
+      console.error("❌ Error updating exam:", error);
+      alert("Шалгалтын мэдээлэл шинэчлэхэд алдаа гарлаа.");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center text-gray-600">
+        ⏳ Ачааллаж байна...
+      </div>
+    );
+  }
 
   if (!exam) {
     return (

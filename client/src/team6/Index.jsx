@@ -30,9 +30,11 @@ const Index = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<LoginSelection />} />
+      {/* ✅ Fix: This makes LoginSelection show at /team6 */}
+      <Route index element={<LoginSelection />} />
 
-      <Route path="/teacher">
+      {/* Teacher Routes */}
+      <Route path="teacher">
         <Route index element={<TeacherHome />} />
         <Route path="question-bank" element={<QuestionBank />} />
         <Route path="courses/:course_id/exams" element={<TeacherExamList />} />
@@ -75,7 +77,8 @@ const Index = () => {
         />
       </Route>
 
-      <Route path="/student">
+      {/* Student Routes */}
+      <Route path="student">
         <Route index element={<StudentHome />} />
         <Route
           path="exams/:exam_id/students/:student_id/start"
@@ -95,6 +98,7 @@ const Index = () => {
         />
       </Route>
 
+      {/* ✅ Fallback */}
       <Route path="*" element={<Navigate to="/team6" replace />} />
     </Routes>
   );

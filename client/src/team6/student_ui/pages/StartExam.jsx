@@ -1,22 +1,85 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
-import {
-  mockExams,
-  mockStudentExams,
-  mockQuestionBank,
-  getRandomQuestions,
-} from "../../data/mockData";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const StartExam = () => {
   const { exam_id, student_id } = useParams();
   const navigate = useNavigate();
-  const [randomQuestions, setRandomQuestions] = useState(null);
 
-  const exam = mockExams.find((e) => e.id === parseInt(exam_id));
-  const studentExam = mockStudentExams.find(
-    (se) =>
-      se.examId === parseInt(exam_id) && se.studentId === parseInt(student_id)
-  );
+  const [exam, setExam] = useState(null);
+  const [studentExam, setStudentExam] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadExamData = async () => {
+      try {
+        const [examData, studentExamData] = await Promise.all([
+          fetchData(`${BASE_URL}/exams/${exam_id}`, "GET"),
+          fetchData(
+            `${BASE_URL}/students/${student_id}/exams/${exam_id}`,
+            "GET"
+          ),
+        ]);
+        setExam(examData);
+        setStudentExam(studentExamData);
+      } catch (error) {
+        console.error("⚠️ Failed to fetch exam data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadExamData();
+  }, [exam_id, student_id]);
+
+  const handleStartExam = async () => {
+    try {
+      // Request backend for random question IDs
+      const randomQuestions = await fetchData(
+        `${BASE_URL}/exams/${exam_id}/random-questions`,
+        "GET"
+      );
+
+      if (!Array.isArray(randomQuestions) || randomQuestions.length === 0) {
+        alert("Асуулт олдсонгүй. Багш шалгалт тохируулсан эсэхийг шалгана уу.");
+        return;
+      }
+
+      console.log("✅ Selected random questions:", randomQuestions);
+
+      // Save to sessionStorage
+      sessionStorage.setItem(
+        `exam_${exam_id}_questions`,
+        JSON.stringify(randomQuestions)
+      );
+
+      // Redirect to TakeExam page
+      navigate(`/team6/student/exams/${exam_id}/students/${student_id}/edit`);
+    } catch (error) {
+      console.error("⚠️ Failed to start exam:", error);
+      alert("Шалгалт эхлүүлэхэд алдаа гарлаа. Дахин оролдоно уу.");
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("mn-MN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-600">
+        ⏳ Ачааллаж байна...
+      </div>
+    );
+  }
 
   if (!exam || !studentExam) {
     return (
@@ -33,45 +96,6 @@ const StartExam = () => {
       </div>
     );
   }
-
-  const handleStartExam = () => {
-    // Санамсаргүй 7 асуулт сонгох
-    const selectedQuestions = getRandomQuestions();
-    console.log("✅ Selected 7 questions:", selectedQuestions);
-
-    // Асуултуудын төрлийг шалгах
-    const questionDetails = selectedQuestions.map((id) => {
-      const q = mockQuestionBank.find((question) => question.id === id);
-      return {
-        id,
-        type: q?.type,
-        hasImage: !!q?.image,
-        question: q?.question?.substring(0, 30) + "...",
-      };
-    });
-    console.log("📊 Question types:", questionDetails);
-
-    // SessionStorage-д хадгалах
-    sessionStorage.setItem(
-      `exam_${exam_id}_questions`,
-      JSON.stringify(selectedQuestions)
-    );
-    console.log("💾 Saved to sessionStorage:", `exam_${exam_id}_questions`);
-
-    // TakeExam хуудас руу шилжих
-    navigate(`/team6/student/exams/${exam_id}/students/${student_id}/edit`);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString("mn-MN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -97,32 +121,13 @@ const StartExam = () => {
           {/* Content */}
           <div className="p-8">
             <div className="space-y-6 mb-8">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">Эхлэх цаг:</span>
-                <span className="font-semibold text-gray-900">
-                  {formatDate(exam.startDate)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">
-                  Үргэлжлэх хугацаа:
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {exam.duration} минут
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">Нийт оноо:</span>
-                <span className="font-semibold text-gray-900">
-                  {exam.totalMarks}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">Тэнцэх оноо:</span>
-                <span className="font-semibold text-gray-900">
-                  {exam.passingMarks}
-                </span>
-              </div>
+              <InfoRow label="Эхлэх цаг:" value={formatDate(exam.startDate)} />
+              <InfoRow
+                label="Үргэлжлэх хугацаа:"
+                value={`${exam.duration} минут`}
+              />
+              <InfoRow label="Нийт оноо:" value={exam.totalMarks} />
+              <InfoRow label="Тэнцэх оноо:" value={exam.passingMarks} />
             </div>
 
             {/* Instructions */}
@@ -131,29 +136,17 @@ const StartExam = () => {
                 📌 Анхаарах зүйлс:
               </h3>
               <ul className="space-y-2 text-sm text-gray-700">
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-600">•</span>
-                  <span>
-                    Шалгалт эхэлсний дараа тогтоосон хугацаанд дуусгах
-                    шаардлагатай
-                  </span>
+                <li>
+                  • Шалгалт эхэлсний дараа тогтоосон хугацаанд дуусгах
+                  шаардлагатай
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-600">•</span>
-                  <span>
-                    Хариултаа оруулсны дараа "Дараагийнх" товчийг дарна уу
-                  </span>
+                <li>
+                  • Хариултаа оруулсны дараа “Дараагийнх” товчийг дарна уу
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-600">•</span>
-                  <span>
-                    Бүх асуултад хариулсны дараа "Дуусгах" товчийг дарна уу
-                  </span>
+                <li>
+                  • Бүх асуултад хариулсны дараа “Дуусгах” товчийг дарна уу
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-600">•</span>
-                  <span>Шалгалт дууссаны дараа өөрчлөлт хийх боломжгүй</span>
-                </li>
+                <li>• Шалгалт дууссаны дараа өөрчлөлт хийх боломжгүй</li>
               </ul>
             </div>
 
@@ -173,10 +166,29 @@ const StartExam = () => {
                   Шалгалт эхлүүлэх
                 </button>
               </div>
+            ) : studentExam.status === "in_progress" ? (
+              <div className="flex gap-4">
+                <button
+                  onClick={() =>
+                    navigate(
+                      `/team6/student/exams/${exam_id}/students/${student_id}/edit`
+                    )
+                  }
+                  className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Үргэлжлүүлэх
+                </button>
+                <Link
+                  to="/team6/student"
+                  className="flex-1 px-6 py-4 border border-gray-300 rounded-lg text-center font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Буцах
+                </Link>
+              </div>
             ) : (
               <div className="text-center">
                 <div className="text-yellow-600 mb-4">
-                  ⚠️ Та энэ шалгалтыг аль хэдийн эхлүүлсэн байна
+                  ⚠️ Та энэ шалгалтыг аль хэдийн өгсөн байна
                 </div>
                 <Link
                   to={`/team6/student/exams/${exam_id}/students/${student_id}/result`}
@@ -192,5 +204,13 @@ const StartExam = () => {
     </div>
   );
 };
+
+// ✅ Small UI helper
+const InfoRow = ({ label, value }) => (
+  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+    <span className="text-gray-600 font-medium">{label}</span>
+    <span className="font-semibold text-gray-900">{value}</span>
+  </div>
+);
 
 export default StartExam;

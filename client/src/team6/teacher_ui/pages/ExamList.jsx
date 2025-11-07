@@ -1,10 +1,39 @@
 import { Link, useParams } from "react-router-dom";
-import { mockExams, mockCourses } from "../../data/mockData";
+import { useEffect, useState } from "react";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const ExamList = () => {
   const { course_id } = useParams();
-  const course = mockCourses.find((c) => c.id === parseInt(course_id));
-  const exams = mockExams.filter((e) => e.courseId === parseInt(course_id));
+  const [course, setCourse] = useState(null);
+  const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load course info
+        const courseData = await fetchData(
+          `${BASE_URL}/courses/${course_id}`,
+          "GET"
+        );
+        setCourse(courseData);
+
+        // Load exams for this course
+        const examData = await fetchData(
+          `${BASE_URL}/courses/${course_id}/exams`,
+          "GET"
+        );
+        setExams(Array.isArray(examData) ? examData : []);
+      } catch (error) {
+        console.error("⚠️ Error loading exam list:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [course_id]);
 
   const getStatusBadge = (status) => {
     const badges = {
@@ -19,14 +48,17 @@ const ExamList = () => {
     };
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-medium ${badges[status]}`}
+        className={`px-3 py-1 rounded-full text-xs font-medium ${
+          badges[status] || "bg-gray-100 text-gray-800"
+        }`}
       >
-        {labels[status]}
+        {labels[status] || "Тодорхойгүй"}
       </span>
     );
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "—";
     const date = new Date(dateString);
     return date.toLocaleString("mn-MN", {
       year: "numeric",
@@ -36,6 +68,14 @@ const ExamList = () => {
       minute: "2-digit",
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-600">
+        ⏳ Ачааллаж байна...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -54,8 +94,11 @@ const ExamList = () => {
                 Шалгалтын жагсаалт
               </h1>
               <p className="text-gray-600 mt-2">
-                Хичээл: <span className="font-semibold">{course?.name}</span> (
-                {course?.code})
+                Хичээл:{" "}
+                <span className="font-semibold">
+                  {course?.name || "Нэргүй хичээл"}
+                </span>{" "}
+                ({course?.code || "код байхгүй"})
               </p>
             </div>
             <Link
@@ -96,52 +139,36 @@ const ExamList = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-xl font-bold text-gray-900">
-                          {exam.title}
+                          {exam.title || "Нэргүй шалгалт"}
                         </h3>
                         {getStatusBadge(exam.status)}
                       </div>
-                      <p className="text-gray-600">{exam.description}</p>
+                      <p className="text-gray-600">
+                        {exam.description || "Тайлбар байхгүй"}
+                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500 mb-1">
-                        Эхлэх цаг
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {formatDate(exam.startDate)}
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500 mb-1">
-                        Үргэлжлэх хугацаа
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {exam.duration} мин
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500 mb-1">
-                        Нийт оноо
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {exam.totalMarks}
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-xs text-gray-500 mb-1">
-                        Тэнцэх оноо
-                      </div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {exam.passingMarks}
-                      </div>
-                    </div>
+                    <InfoBox
+                      label="Эхлэх цаг"
+                      value={formatDate(exam.startDate)}
+                    />
+                    <InfoBox
+                      label="Үргэлжлэх хугацаа"
+                      value={`${exam.duration || "?"} мин`}
+                    />
+                    <InfoBox label="Нийт оноо" value={exam.totalMarks || "—"} />
+                    <InfoBox
+                      label="Тэнцэх оноо"
+                      value={exam.passingMarks || "—"}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="text-sm text-gray-500">
-                      Үүсгэсэн: {exam.createdBy} • {formatDate(exam.createdAt)}
+                      Үүсгэсэн: {exam.createdBy || "Тодорхойгүй"} •{" "}
+                      {formatDate(exam.createdAt)}
                     </div>
                     <div className="flex gap-2">
                       <Link
@@ -179,5 +206,13 @@ const ExamList = () => {
     </div>
   );
 };
+
+// Small reusable box component
+const InfoBox = ({ label, value }) => (
+  <div className="bg-gray-50 p-3 rounded-lg">
+    <div className="text-xs text-gray-500 mb-1">{label}</div>
+    <div className="text-sm font-semibold text-gray-900">{value}</div>
+  </div>
+);
 
 export default ExamList;

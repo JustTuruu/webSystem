@@ -1,32 +1,42 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { mockExams, mockStudentExams } from "../../data/mockData";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const StudentHome = () => {
-  // Mock student ID (өөрийн ID)
+  // Assume logged-in student ID (can replace with context later)
   const currentStudentId = 1;
 
-  // Багшийн идэвхтэй шалгалтууд
-  const activeExams = mockExams.filter((e) => e.status === "active");
+  const [activeExams, setActiveExams] = useState([]);
+  const [myExams, setMyExams] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Суралцагчийн өгсөн шалгалтууд
-  const myExams = mockStudentExams.filter(
-    (se) => se.studentId === currentStudentId
-  );
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Fetch teacher exams and student-specific exam records
+        const [examData, studentExamData] = await Promise.all([
+          fetchData(`${BASE_URL}/exams`, "GET"),
+          fetchData(`${BASE_URL}/students/${currentStudentId}/exams`, "GET"),
+        ]);
 
-  // Статистик
-  const totalExams = myExams.length;
-  const completedExams = myExams.filter((e) => e.status === "completed").length;
-  const inProgressExams = myExams.filter(
-    (e) => e.status === "in_progress"
-  ).length;
-  const averageScore =
-    completedExams > 0
-      ? Math.round(
-          myExams
-            .filter((e) => e.score !== null)
-            .reduce((sum, e) => sum + e.score, 0) / completedExams
-        )
-      : 0;
+        // Filter only active exams
+        const active = Array.isArray(examData)
+          ? examData.filter((e) => e.status === "active")
+          : [];
+
+        setActiveExams(active);
+        setMyExams(Array.isArray(studentExamData) ? studentExamData : []);
+      } catch (error) {
+        console.error("⚠️ Failed to fetch student home data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [currentStudentId]);
 
   const getStatusBadge = (status) => {
     const badges = {
@@ -41,12 +51,37 @@ const StudentHome = () => {
     };
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-medium ${badges[status]}`}
+        className={`px-3 py-1 rounded-full text-xs font-medium ${
+          badges[status] || "bg-gray-100 text-gray-700"
+        }`}
       >
-        {labels[status]}
+        {labels[status] || "Тодорхойгүй"}
       </span>
     );
   };
+
+  // Stats
+  const totalExams = myExams.length;
+  const completedExams = myExams.filter((e) => e.status === "completed").length;
+  const inProgressExams = myExams.filter(
+    (e) => e.status === "in_progress"
+  ).length;
+  const averageScore =
+    completedExams > 0
+      ? Math.round(
+          myExams
+            .filter((e) => e.score !== null)
+            .reduce((sum, e) => sum + e.score, 0) / completedExams
+        )
+      : 0;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600">
+        ⏳ Ачааллаж байна...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -70,67 +105,37 @@ const StudentHome = () => {
         </div>
       </div>
 
+      {/* Body */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-xl">
-                📝
-              </div>
-              <div>
-                <div className="text-xs text-gray-600">Нийт шалгалт</div>
-                <div className="text-xl font-bold text-gray-900">
-                  {totalExams}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-xl">
-                ✅
-              </div>
-              <div>
-                <div className="text-xs text-gray-600">Дууссан</div>
-                <div className="text-xl font-bold text-gray-900">
-                  {completedExams}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center text-xl">
-                ⏳
-              </div>
-              <div>
-                <div className="text-xs text-gray-600">Явагдаж байна</div>
-                <div className="text-xl font-bold text-gray-900">
-                  {inProgressExams}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-xl">
-                📊
-              </div>
-              <div>
-                <div className="text-xs text-gray-600">Дундаж оноо</div>
-                <div className="text-xl font-bold text-gray-900">
-                  {averageScore}
-                </div>
-              </div>
-            </div>
-          </div>
+          <StatCard
+            icon="📝"
+            label="Нийт шалгалт"
+            value={totalExams}
+            color="bg-blue-100"
+          />
+          <StatCard
+            icon="✅"
+            label="Дууссан"
+            value={completedExams}
+            color="bg-green-100"
+          />
+          <StatCard
+            icon="⏳"
+            label="Явагдаж байна"
+            value={inProgressExams}
+            color="bg-yellow-100"
+          />
+          <StatCard
+            icon="📊"
+            label="Дундаж оноо"
+            value={averageScore}
+            color="bg-purple-100"
+          />
         </div>
 
-        {/* Active Exams from Teacher */}
+        {/* Active Exams */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
             <span>🎯</span> Идэвхтэй шалгалтууд
@@ -177,7 +182,7 @@ const StudentHome = () => {
                         >
                           Шалгалт эхлүүлэх
                         </Link>
-                      ) : myExam.status === "completed" ? (
+                      ) : myExam?.status === "completed" ? (
                         <Link
                           to={`/team6/student/exams/${exam.id}/students/${currentStudentId}/result`}
                           className="flex-1 px-4 py-2 bg-green-600 text-white text-center rounded-lg font-medium hover:bg-green-700 transition-colors"
@@ -213,41 +218,36 @@ const StudentHome = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {myExams.map((studentExam) => {
-                const exam = mockExams.find((e) => e.id === studentExam.examId);
-                if (!exam) return null;
-
-                return (
-                  <div
-                    key={studentExam.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 mb-1">
-                          {exam.title}
-                        </h3>
-                        <div className="flex gap-3 text-sm text-gray-600">
-                          {getStatusBadge(studentExam.status)}
-                          {studentExam.score !== null && (
-                            <span className="font-semibold">
-                              Оноо: {studentExam.score}/{exam.totalMarks}
-                            </span>
-                          )}
-                        </div>
+              {myExams.map((studentExam) => (
+                <div
+                  key={studentExam.id}
+                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">
+                        {studentExam.examTitle || "Шалгалт"}
+                      </h3>
+                      <div className="flex gap-3 text-sm text-gray-600">
+                        {getStatusBadge(studentExam.status)}
+                        {studentExam.score !== null && (
+                          <span className="font-semibold">
+                            Оноо: {studentExam.score}/{studentExam.totalMarks}
+                          </span>
+                        )}
                       </div>
-                      {studentExam.status === "completed" && (
-                        <Link
-                          to={`/team6/student/exams/${exam.id}/students/${currentStudentId}/result`}
-                          className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                        >
-                          Үр дүн харах
-                        </Link>
-                      )}
                     </div>
+                    {studentExam.status === "completed" && (
+                      <Link
+                        to={`/team6/student/exams/${studentExam.examId}/students/${currentStudentId}/result`}
+                        className="px-4 py-2 bg-gray-100 text-gray-900 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                      >
+                        Үр дүн харах
+                      </Link>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -255,5 +255,22 @@ const StudentHome = () => {
     </div>
   );
 };
+
+// ✅ Small component for stat cards
+const StatCard = ({ icon, label, value, color }) => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+    <div className="flex items-center gap-3">
+      <div
+        className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center text-xl`}
+      >
+        {icon}
+      </div>
+      <div>
+        <div className="text-xs text-gray-600">{label}</div>
+        <div className="text-xl font-bold text-gray-900">{value}</div>
+      </div>
+    </div>
+  </div>
+);
 
 export default StudentHome;

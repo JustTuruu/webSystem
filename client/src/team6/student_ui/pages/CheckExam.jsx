@@ -1,29 +1,49 @@
 import { Link, useParams } from "react-router-dom";
-import { mockExams, mockQuestionBank } from "../../data/mockData";
 import { useState, useEffect } from "react";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const CheckExam = () => {
   const { exam_id, student_id } = useParams();
+  const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [studentAnswers, setStudentAnswers] = useState({});
-
-  const exam = mockExams.find((e) => e.id === parseInt(exam_id));
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // SessionStorage-аас асуултууд болон хариултуудыг авах
-    const storedQuestionIds = JSON.parse(
-      sessionStorage.getItem(`exam_${exam_id}_questions`) || "[]"
-    );
-    const storedAnswers = JSON.parse(
-      sessionStorage.getItem(`exam_${exam_id}_answers`) || "{}"
-    );
+    const loadExamData = async () => {
+      try {
+        // Fetch exam + answers
+        const [examData, questionsData, answerData] = await Promise.all([
+          fetchData(`${BASE_URL}/exams/${exam_id}`, "GET"),
+          fetchData(`${BASE_URL}/exams/${exam_id}/questions`, "GET"),
+          fetchData(
+            `${BASE_URL}/students/${student_id}/exams/${exam_id}/answers`,
+            "GET"
+          ),
+        ]);
 
-    const loadedQuestions = storedQuestionIds
-      .map((id) => mockQuestionBank.find((q) => q.id === id))
-      .filter(Boolean);
-    setQuestions(loadedQuestions);
-    setStudentAnswers(storedAnswers);
-  }, [exam_id]);
+        setExam(examData);
+        setQuestions(questionsData || []);
+        setStudentAnswers(answerData || {});
+      } catch (error) {
+        console.error("⚠️ Failed to load exam check data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadExamData();
+  }, [exam_id, student_id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-600">
+        ⏳ Ачааллаж байна...
+      </div>
+    );
+  }
 
   if (!exam || questions.length === 0) {
     return (
@@ -41,16 +61,18 @@ const CheckExam = () => {
     );
   }
 
-  // Helper function to check if answer is correct
+  // Helper function to check correctness
   const checkAnswer = (question, studentAnswer) => {
     if (!studentAnswer) return false;
 
+    const correctAnswers = question.correctAnswers || [];
+
     if (question.type === "multiple_choice") {
-      return question.correctAnswers[0] === studentAnswer;
+      return correctAnswers.includes(studentAnswer);
     }
 
     if (question.type === "multiple_correct") {
-      const correctSet = new Set(question.correctAnswers);
+      const correctSet = new Set(correctAnswers);
       const studentSet = new Set(studentAnswer);
       return (
         correctSet.size === studentSet.size &&
@@ -58,22 +80,9 @@ const CheckExam = () => {
       );
     }
 
-    if (question.type === "fill_blank") {
-      const userLower = studentAnswer.toLowerCase().trim();
-      return (
-        question.acceptableAnswers?.some(
-          (acceptable) => acceptable.toLowerCase().trim() === userLower
-        ) || question.correctAnswers[0].toLowerCase().trim() === userLower
-      );
-    }
-
-    if (question.type === "text_answer") {
-      const userLower = studentAnswer.toLowerCase().trim();
-      return question.acceptableAnswers?.some(
-        (acceptable) =>
-          acceptable.toLowerCase().trim().includes(userLower) ||
-          userLower.includes(acceptable.toLowerCase().trim())
-      );
+    if (question.type === "fill_blank" || question.type === "text_answer") {
+      const lower = studentAnswer.toLowerCase().trim();
+      return correctAnswers.some((ans) => ans.toLowerCase().trim() === lower);
     }
 
     return false;
@@ -93,10 +102,12 @@ const CheckExam = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Зөв хариултууд
           </h1>
-          <p className="text-gray-600">{exam.title} - 7 санамсаргүй асуулт</p>
+          <p className="text-gray-600">
+            {exam.title} — {questions.length} асуулт
+          </p>
         </div>
 
-        {/* Questions and Answers */}
+        {/* Question List */}
         <div className="space-y-6">
           {questions.map((question, index) => {
             const studentAnswer = studentAnswers[question.id];
@@ -109,7 +120,7 @@ const CheckExam = () => {
                   isCorrect ? "border-green-200" : "border-red-200"
                 }`}
               >
-                {/* Question Header */}
+                {/* Header */}
                 <div className="flex items-start gap-3 mb-4">
                   <span className="bg-black text-white px-3 py-1 rounded-lg font-bold text-sm">
                     {index + 1}
@@ -128,7 +139,7 @@ const CheckExam = () => {
                         {question.type === "text_answer" && "📝 Текст"}
                       </span>
                       <span className="text-sm text-gray-600">
-                        Оноо: {question.marks}
+                        Оноо: {question.marks || 5}
                       </span>
                     </div>
                   </div>
@@ -143,14 +154,13 @@ const CheckExam = () => {
                   </span>
                 </div>
 
-                {/* Question Image */}
+                {/* Image */}
                 {question.image && (
                   <div className="mb-4">
                     <img
                       src={question.image}
                       alt="Асуултын зураг"
                       className="max-w-full h-auto rounded-lg border-2 border-gray-300 shadow-sm"
-                      style={{ maxHeight: "400px" }}
                     />
                   </div>
                 )}
@@ -161,15 +171,17 @@ const CheckExam = () => {
                     Таны хариулт:
                   </div>
                   <div
-                    className={`font-medium ${isCorrect ? "text-green-700" : "text-red-700"}`}
+                    className={`font-medium ${
+                      isCorrect ? "text-green-700" : "text-red-700"
+                    }`}
                   >
                     {question.type === "multiple_correct" &&
                     Array.isArray(studentAnswer) ? (
-                      <div className="space-y-1">
+                      <ul className="list-disc pl-5 space-y-1">
                         {studentAnswer.map((ans, idx) => (
-                          <div key={idx}>• {ans}</div>
+                          <li key={idx}>{ans}</li>
                         ))}
-                      </div>
+                      </ul>
                     ) : (
                       studentAnswer || (
                         <span className="text-gray-400">Хариулаагүй</span>
@@ -186,26 +198,19 @@ const CheckExam = () => {
                     </div>
                     <div className="font-semibold text-green-800">
                       {question.type === "multiple_correct" ? (
-                        <div className="space-y-1">
+                        <ul className="list-disc pl-5 space-y-1">
                           {question.correctAnswers.map((ans, idx) => (
-                            <div key={idx}>• {ans}</div>
+                            <li key={idx}>{ans}</li>
                           ))}
-                        </div>
+                        </ul>
                       ) : (
                         question.correctAnswers[0]
                       )}
                     </div>
-                    {question.acceptableAnswers &&
-                      question.acceptableAnswers.length > 0 && (
-                        <div className="mt-2 text-sm text-green-600">
-                          Бусад зөв хариултууд:{" "}
-                          {question.acceptableAnswers.join(", ")}
-                        </div>
-                      )}
                   </div>
                 )}
 
-                {/* Options (for multiple choice and multiple correct) */}
+                {/* Options */}
                 {(question.type === "multiple_choice" ||
                   question.type === "multiple_correct") && (
                   <div className="mt-4 space-y-2">
@@ -225,8 +230,8 @@ const CheckExam = () => {
                             isCorrectOption
                               ? "border-green-300 bg-green-50"
                               : isStudentChoice
-                                ? "border-red-300 bg-red-50"
-                                : "border-gray-200 bg-white"
+                              ? "border-red-300 bg-red-50"
+                              : "border-gray-200 bg-white"
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -241,8 +246,8 @@ const CheckExam = () => {
                                 isCorrectOption
                                   ? "text-green-800"
                                   : isStudentChoice
-                                    ? "text-red-800"
-                                    : "text-gray-700"
+                                  ? "text-red-800"
+                                  : "text-gray-700"
                               }`}
                             >
                               {option}
@@ -258,7 +263,7 @@ const CheckExam = () => {
           })}
         </div>
 
-        {/* Back Button */}
+        {/* Footer */}
         <div className="mt-8">
           <Link
             to={`/team6/student/exams/${exam_id}/students/${student_id}/result`}

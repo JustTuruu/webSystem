@@ -1,74 +1,47 @@
 import { Link, useParams } from "react-router-dom";
-import { mockExams, mockQuestionBank } from "../../data/mockData";
 import { useState, useEffect } from "react";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const ExamResult = () => {
   const { exam_id, student_id } = useParams();
-  const [score, setScore] = useState(0);
-  const [totalQuestions, setTotalQuestions] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
-
-  const exam = mockExams.find((e) => e.id === parseInt(exam_id));
+  const [exam, setExam] = useState(null);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // SessionStorage-аас асуултууд болон хариултуудыг авах
-    const storedQuestionIds = JSON.parse(
-      sessionStorage.getItem(`exam_${exam_id}_questions`) || "[]"
+    const loadResult = async () => {
+      try {
+        const [examData, resultData] = await Promise.all([
+          fetchData(`${BASE_URL}/exams/${exam_id}`, "GET"),
+          fetchData(
+            `${BASE_URL}/students/${student_id}/exams/${exam_id}/result`,
+            "GET"
+          ),
+        ]);
+
+        setExam(examData);
+        setResult(resultData);
+      } catch (error) {
+        console.error("⚠️ Failed to load exam result:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadResult();
+  }, [exam_id, student_id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-600">
+        ⏳ Үр дүнг ачааллаж байна...
+      </div>
     );
-    const storedAnswers = JSON.parse(
-      sessionStorage.getItem(`exam_${exam_id}_answers`) || "{}"
-    );
+  }
 
-    if (storedQuestionIds.length > 0) {
-      const questions = storedQuestionIds
-        .map((id) => mockQuestionBank.find((q) => q.id === id))
-        .filter(Boolean);
-
-      // Оноо тооцох
-      let totalScore = 0;
-      let correct = 0;
-
-      questions.forEach((q) => {
-        const userAnswer = storedAnswers[q.id];
-        if (userAnswer) {
-          // Зөв эсэхийг шалгах
-          let isCorrect = false;
-
-          if (q.type === "multiple_choice") {
-            isCorrect = q.correctAnswers[0] === userAnswer;
-          } else if (q.type === "multiple_correct") {
-            const correctSet = new Set(q.correctAnswers);
-            const userSet = new Set(userAnswer);
-            isCorrect =
-              correctSet.size === userSet.size &&
-              [...correctSet].every((ans) => userSet.has(ans));
-          } else if (q.type === "fill_blank" || q.type === "text_answer") {
-            // Жижиг үсгээр харьцуулах
-            const userLower = userAnswer.toLowerCase().trim();
-            isCorrect =
-              q.correctAnswers.some(
-                (ans) => ans.toLowerCase().trim() === userLower
-              ) ||
-              (q.acceptableAnswers &&
-                q.acceptableAnswers.some(
-                  (ans) => ans.toLowerCase().trim() === userLower
-                ));
-          }
-
-          if (isCorrect) {
-            totalScore += q.marks || 5;
-            correct++;
-          }
-        }
-      });
-
-      setScore(totalScore);
-      setTotalQuestions(questions.length);
-      setCorrectCount(correct);
-    }
-  }, [exam_id]);
-
-  if (!exam) {
+  if (!exam || !result) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
@@ -84,8 +57,10 @@ const ExamResult = () => {
     );
   }
 
+  const { score, totalMarks, correctCount, totalQuestions, duration, status } =
+    result;
   const passed = score >= exam.passingMarks;
-  const percentage = ((score / exam.totalMarks) * 100).toFixed(1);
+  const percentage = ((score / totalMarks) * 100).toFixed(1);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -114,7 +89,9 @@ const ExamResult = () => {
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
           {/* Header */}
           <div
-            className={`p-8 text-center ${passed ? "bg-green-600" : "bg-red-600"} text-white`}
+            className={`p-8 text-center ${
+              passed ? "bg-green-600" : "bg-red-600"
+            } text-white`}
           >
             <div className="text-6xl mb-4">{passed ? "🎉" : "😞"}</div>
             <h1 className="text-3xl font-bold mb-2">
@@ -133,9 +110,7 @@ const ExamResult = () => {
               <div className="inline-block">
                 <div className="text-7xl font-bold text-gray-900 mb-2">
                   {score}
-                  <span className="text-3xl text-gray-500">
-                    /{exam.totalMarks}
-                  </span>
+                  <span className="text-3xl text-gray-500">/{totalMarks}</span>
                 </div>
                 <div className="text-2xl font-semibold text-gray-600">
                   {percentage}%
@@ -148,44 +123,31 @@ const ExamResult = () => {
 
             {/* Details */}
             <div className="space-y-4 mb-8">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">Шалгалт:</span>
-                <span className="font-semibold text-gray-900">
-                  {exam.title}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">Нийт асуулт:</span>
-                <span className="font-semibold text-gray-900">
-                  {totalQuestions}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">
-                  Үргэлжилсэн хугацаа:
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {exam.duration} минут
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">Тэнцэх оноо:</span>
-                <span className="font-semibold text-gray-900">
-                  {exam.passingMarks}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-600 font-medium">Үр дүн:</span>
-                <span
-                  className={`px-4 py-2 rounded-full font-semibold ${
-                    passed
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {passed ? "✓ Тэнцсэн" : "✗ Тэнцээгүй"}
-                </span>
-              </div>
+              <InfoRow label="Шалгалт:" value={exam.title} />
+              <InfoRow label="Нийт асуулт:" value={totalQuestions} />
+              <InfoRow
+                label="Шалгалт өгсөн огноо:"
+                value={formatDate(result.submittedAt)}
+              />
+              <InfoRow
+                label="Үргэлжилсэн хугацаа:"
+                value={`${duration} минут`}
+              />
+              <InfoRow label="Тэнцэх оноо:" value={exam.passingMarks} />
+              <InfoRow
+                label="Үр дүн:"
+                value={
+                  <span
+                    className={`px-4 py-2 rounded-full font-semibold ${
+                      passed
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {passed ? "✓ Тэнцсэн" : "✗ Тэнцээгүй"}
+                  </span>
+                }
+              />
             </div>
 
             {/* Actions */}
@@ -209,5 +171,13 @@ const ExamResult = () => {
     </div>
   );
 };
+
+// ✅ Small helper component for rows
+const InfoRow = ({ label, value }) => (
+  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+    <span className="text-gray-600 font-medium">{label}</span>
+    <span className="font-semibold text-gray-900">{value}</span>
+  </div>
+);
 
 export default ExamResult;

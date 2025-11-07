@@ -1,31 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  mockCourses,
-  mockTopics,
-  mockQuestionBank,
-  mockCategories,
-} from "../../data/mockData";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const QuestionBank = () => {
+  const [categories, setCategories] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [questions, setQuestions] = useState([]);
+
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [selectedQuestionType, setSelectedQuestionType] = useState("all");
 
-  // Filter courses by category
-  const filteredCourses = selectedCategory
-    ? mockCourses.filter((c) => c.categoryId === selectedCategory.id)
-    : mockCourses;
+  const [loading, setLoading] = useState(true);
 
-  // Filter topics by selected course
+  // Fetch all data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [cats, crs, tpcs, qs] = await Promise.all([
+          fetchData(`${BASE_URL}/categories`, "GET"),
+          fetchData(`${BASE_URL}/courses`, "GET"),
+          fetchData(`${BASE_URL}/topics`, "GET"),
+          fetchData(`${BASE_URL}/questions`, "GET"),
+        ]);
+        setCategories(cats || []);
+        setCourses(crs || []);
+        setTopics(tpcs || []);
+        setQuestions(qs || []);
+      } catch (err) {
+        console.error("⚠️ Failed to load question bank:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Filter logic
+  const filteredCourses = selectedCategory
+    ? courses.filter((c) => c.categoryId === selectedCategory.id)
+    : courses;
+
   const filteredTopics = selectedCourse
-    ? mockTopics.filter((t) => t.courseId === selectedCourse.id)
+    ? topics.filter((t) => t.courseId === selectedCourse.id)
     : [];
 
-  // Filter questions
-  const filteredQuestions = mockQuestionBank.filter((q) => {
+  const filteredQuestions = questions.filter((q) => {
     if (selectedCourse && q.courseId !== selectedCourse.id) return false;
     if (selectedTopic && q.topicId !== selectedTopic.id) return false;
     if (selectedDifficulty !== "all" && q.difficulty !== selectedDifficulty)
@@ -58,12 +83,22 @@ const QuestionBank = () => {
     };
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-medium ${badges[difficulty]}`}
+        className={`px-3 py-1 rounded-full text-xs font-medium ${
+          badges[difficulty] || "bg-gray-100 text-gray-700"
+        }`}
       >
-        {labels[difficulty]}
+        {labels[difficulty] || "Тодорхойгүй"}
       </span>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600">
+        ⏳ Ачааллаж байна...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -89,340 +124,299 @@ const QuestionBank = () => {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Category Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Ангилал
-              </label>
-              <select
-                value={selectedCategory?.id || ""}
-                onChange={(e) => {
-                  const category = mockCategories.find(
-                    (c) => c.id === parseInt(e.target.value)
-                  );
-                  setSelectedCategory(category);
-                  setSelectedCourse(null);
-                  setSelectedTopic(null);
-                }}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
-              >
-                <option value="">Бүгд</option>
-                {mockCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SelectBox
+              label="Ангилал"
+              value={selectedCategory?.id || ""}
+              onChange={(id) => {
+                const category = categories.find((c) => c.id === parseInt(id));
+                setSelectedCategory(category);
+                setSelectedCourse(null);
+                setSelectedTopic(null);
+              }}
+              options={categories}
+              placeholder="Бүгд"
+            />
 
             {/* Course Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Хичээл
-              </label>
-              <select
-                value={selectedCourse?.id || ""}
-                onChange={(e) => {
-                  const course = filteredCourses.find(
-                    (c) => c.id === parseInt(e.target.value)
-                  );
-                  setSelectedCourse(course);
-                  setSelectedTopic(null);
-                }}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
-              >
-                <option value="">Бүгд</option>
-                {filteredCourses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SelectBox
+              label="Хичээл"
+              value={selectedCourse?.id || ""}
+              onChange={(id) => {
+                const course = filteredCourses.find(
+                  (c) => c.id === parseInt(id)
+                );
+                setSelectedCourse(course);
+                setSelectedTopic(null);
+              }}
+              options={filteredCourses}
+              placeholder="Бүгд"
+            />
 
             {/* Topic Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Сэдэв
-              </label>
-              <select
-                value={selectedTopic?.id || ""}
-                onChange={(e) => {
-                  const topic = filteredTopics.find(
-                    (t) => t.id === parseInt(e.target.value)
-                  );
-                  setSelectedTopic(topic);
-                }}
-                disabled={!selectedCourse}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none disabled:bg-gray-100"
-              >
-                <option value="">Бүгд</option>
-                {filteredTopics.map((topic) => (
-                  <option key={topic.id} value={topic.id}>
-                    {topic.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SelectBox
+              label="Сэдэв"
+              value={selectedTopic?.id || ""}
+              onChange={(id) => {
+                const topic = filteredTopics.find((t) => t.id === parseInt(id));
+                setSelectedTopic(topic);
+              }}
+              options={filteredTopics}
+              placeholder="Бүгд"
+              disabled={!selectedCourse}
+            />
 
             {/* Question Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Асуултын төрөл
-              </label>
-              <select
-                value={selectedQuestionType}
-                onChange={(e) => setSelectedQuestionType(e.target.value)}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
-              >
-                <option value="all">Бүгд</option>
-                <option value="multiple_choice">☑️ Нэг сонголт</option>
-                <option value="multiple_correct">✅ Олон сонголт</option>
-                <option value="fill_blank">✏️ Нөхөх</option>
-                <option value="text_answer">📝 Бичгээр хариулах</option>
-              </select>
-            </div>
+            <SelectInput
+              label="Асуултын төрөл"
+              value={selectedQuestionType}
+              onChange={setSelectedQuestionType}
+              options={[
+                { value: "all", label: "Бүгд" },
+                { value: "multiple_choice", label: "☑️ Нэг сонголт" },
+                { value: "multiple_correct", label: "✅ Олон сонголт" },
+                { value: "fill_blank", label: "✏️ Нөхөх" },
+                { value: "text_answer", label: "📝 Бичгээр хариулах" },
+              ]}
+            />
 
             {/* Difficulty */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Хүндийн түвшин
-              </label>
-              <select
-                value={selectedDifficulty}
-                onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
-              >
-                <option value="all">Бүгд</option>
-                <option value="easy">Хялбар</option>
-                <option value="medium">Дунд</option>
-                <option value="hard">Хүнд</option>
-              </select>
-            </div>
+            <SelectInput
+              label="Хүндийн түвшин"
+              value={selectedDifficulty}
+              onChange={setSelectedDifficulty}
+              options={[
+                { value: "all", label: "Бүгд" },
+                { value: "easy", label: "Хялбар" },
+                { value: "medium", label: "Дунд" },
+                { value: "hard", label: "Хүнд" },
+              ]}
+            />
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">Нийт асуулт</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {filteredQuestions.length}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">☑️ Нэг сонголт</div>
-            <div className="text-2xl font-bold text-blue-600">
-              {
-                filteredQuestions.filter((q) => q.type === "multiple_choice")
-                  .length
-              }
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">✅ Олон сонголт</div>
-            <div className="text-2xl font-bold text-purple-600">
-              {
-                filteredQuestions.filter((q) => q.type === "multiple_correct")
-                  .length
-              }
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">✏️ Нөхөх</div>
-            <div className="text-2xl font-bold text-orange-600">
-              {filteredQuestions.filter((q) => q.type === "fill_blank").length}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">📝 Бичгээр</div>
-            <div className="text-2xl font-bold text-indigo-600">
-              {filteredQuestions.filter((q) => q.type === "text_answer").length}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">Хялбар</div>
-            <div className="text-2xl font-bold text-green-600">
-              {filteredQuestions.filter((q) => q.difficulty === "easy").length}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">Дунд/Хүнд</div>
-            <div className="text-2xl font-bold text-yellow-600">
-              {
-                filteredQuestions.filter(
-                  (q) => q.difficulty === "medium" || q.difficulty === "hard"
-                ).length
-              }
-            </div>
-          </div>
+          <Stat
+            label="Нийт асуулт"
+            value={filteredQuestions.length}
+            color="text-gray-900"
+          />
+          <Stat
+            label="☑️ Нэг сонголт"
+            value={
+              filteredQuestions.filter((q) => q.type === "multiple_choice")
+                .length
+            }
+            color="text-blue-600"
+          />
+          <Stat
+            label="✅ Олон сонголт"
+            value={
+              filteredQuestions.filter((q) => q.type === "multiple_correct")
+                .length
+            }
+            color="text-purple-600"
+          />
+          <Stat
+            label="✏️ Нөхөх"
+            value={
+              filteredQuestions.filter((q) => q.type === "fill_blank").length
+            }
+            color="text-orange-600"
+          />
+          <Stat
+            label="📝 Бичгээр"
+            value={
+              filteredQuestions.filter((q) => q.type === "text_answer").length
+            }
+            color="text-indigo-600"
+          />
+          <Stat
+            label="Хялбар"
+            value={
+              filteredQuestions.filter((q) => q.difficulty === "easy").length
+            }
+            color="text-green-600"
+          />
+          <Stat
+            label="Дунд/Хүнд"
+            value={
+              filteredQuestions.filter(
+                (q) => q.difficulty === "medium" || q.difficulty === "hard"
+              ).length
+            }
+            color="text-yellow-600"
+          />
         </div>
 
         {/* Questions List */}
-        <div className="space-y-4">
-          {filteredQuestions.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-              <div className="text-6xl mb-4">❓</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Асуулт олдсонгүй
-              </h3>
-              <p className="text-gray-600">Өөр шүүлтүүр сонгоно уу</p>
+        {filteredQuestions.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <div className="text-6xl mb-4">❓</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Асуулт олдсонгүй
+            </h3>
+            <p className="text-gray-600">Өөр шүүлтүүр сонгоно уу</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredQuestions.map((q) => (
+              <QuestionCard
+                key={q.id}
+                q={q}
+                getDifficultyBadge={getDifficultyBadge}
+                getQuestionTypeLabel={getQuestionTypeLabel}
+                courses={courses}
+                topics={topics}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ✅ Small reusable components
+const SelectBox = ({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-900 mb-2">
+      {label}
+    </label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none disabled:bg-gray-100"
+    >
+      <option value="">{placeholder}</option>
+      {options.map((opt) => (
+        <option key={opt.id} value={opt.id}>
+          {opt.name}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+const SelectInput = ({ label, value, onChange, options }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-900 mb-2">
+      {label}
+    </label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-black focus:outline-none"
+    >
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+const Stat = ({ label, value, color }) => (
+  <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+    <div className="text-sm text-gray-600 mb-1">{label}</div>
+    <div className={`text-2xl font-bold ${color}`}>{value}</div>
+  </div>
+);
+
+const QuestionCard = ({
+  q,
+  getDifficultyBadge,
+  getQuestionTypeLabel,
+  courses,
+  topics,
+}) => {
+  const course = courses.find((c) => c.id === q.courseId);
+  const topic = topics.find((t) => t.id === q.topicId);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="bg-black text-white px-3 py-1 rounded-lg font-bold text-sm">
+              #{q.id}
+            </span>
+            {getDifficultyBadge(q.difficulty)}
+            <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
+              {getQuestionTypeLabel(q.type)}
+            </span>
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+              {q.marks} оноо
+            </span>
+          </div>
+          <div className="text-sm text-gray-600 mb-3">
+            <span className="font-medium">{course?.name}</span> • {topic?.name}
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            {q.question}
+          </h3>
+          {q.image && (
+            <div className="mb-4">
+              <img
+                src={q.image}
+                alt="Question illustration"
+                className="max-w-md rounded-lg border-2 border-gray-200"
+              />
             </div>
-          ) : (
-            filteredQuestions.map((question) => {
-              const course = mockCourses.find(
-                (c) => c.id === question.courseId
-              );
-              const topic = mockTopics.find((t) => t.id === question.topicId);
-
-              return (
-                <div
-                  key={question.id}
-                  className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow"
-                >
-                  {/* Question Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-black text-white px-3 py-1 rounded-lg font-bold text-sm">
-                          #{question.id}
-                        </span>
-                        {getDifficultyBadge(question.difficulty)}
-                        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                          {getQuestionTypeLabel(question.type)}
-                        </span>
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                          {question.marks} оноо
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600 mb-3">
-                        <span className="font-medium">{course?.name}</span> •{" "}
-                        {topic?.name}
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                        {question.question}
-                      </h3>
-
-                      {/* Question Image */}
-                      {question.image && (
-                        <div className="mb-4">
-                          <img
-                            src={question.image}
-                            alt="Question illustration"
-                            className="max-w-md rounded-lg border-2 border-gray-200"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Question Options/Answers */}
-                  {question.type === "multiple_choice" && (
-                    <div className="space-y-2 ml-4">
-                      {question.options.map((option, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-3 rounded-lg border-2 ${
-                            question.correctAnswers.includes(option)
-                              ? "border-green-300 bg-green-50"
-                              : "border-gray-200"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {question.correctAnswers.includes(option) && (
-                              <span className="text-green-600 font-bold">
-                                ✓
-                              </span>
-                            )}
-                            <span
-                              className={
-                                question.correctAnswers.includes(option)
-                                  ? "font-semibold text-green-800"
-                                  : "text-gray-700"
-                              }
-                            >
-                              {option}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {question.type === "multiple_correct" && (
-                    <div className="space-y-2 ml-4">
-                      <div className="text-sm text-gray-600 mb-2 font-medium">
-                        Олон зөв хариулттай (Зөв:{" "}
-                        {question.correctAnswers.length})
-                      </div>
-                      {question.options.map((option, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-3 rounded-lg border-2 ${
-                            question.correctAnswers.includes(option)
-                              ? "border-green-300 bg-green-50"
-                              : "border-gray-200"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {question.correctAnswers.includes(option) && (
-                              <span className="text-green-600 font-bold">
-                                ✓
-                              </span>
-                            )}
-                            <span
-                              className={
-                                question.correctAnswers.includes(option)
-                                  ? "font-semibold text-green-800"
-                                  : "text-gray-700"
-                              }
-                            >
-                              {option}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {(question.type === "fill_blank" ||
-                    question.type === "text_answer") && (
-                    <div className="ml-4 p-4 bg-green-50 rounded-lg border-2 border-green-200">
-                      <div className="text-sm text-green-700 mb-1 font-medium">
-                        ✓ Зөв хариулт:
-                      </div>
-                      <div className="font-semibold text-green-800 mb-2">
-                        {question.correctAnswers.join(", ")}
-                      </div>
-                      {question.acceptableAnswers && (
-                        <div className="text-sm text-gray-600 mt-2">
-                          <span className="font-medium">
-                            Хүлээн зөвшөөрөгдөх:
-                          </span>{" "}
-                          {question.acceptableAnswers.join(", ")}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Tags */}
-                  {question.tags && (
-                    <div className="flex gap-2 mt-4 ml-4">
-                      {question.tags.map((tag, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
           )}
         </div>
       </div>
+
+      {/* Question Type Display */}
+      {(q.type === "multiple_choice" || q.type === "multiple_correct") && (
+        <div className="space-y-2 ml-4">
+          {q.options?.map((opt, i) => (
+            <div
+              key={i}
+              className={`p-3 rounded-lg border-2 ${
+                q.correctAnswers?.includes(opt)
+                  ? "border-green-300 bg-green-50"
+                  : "border-gray-200"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {q.correctAnswers?.includes(opt) && (
+                  <span className="text-green-600 font-bold">✓</span>
+                )}
+                <span
+                  className={
+                    q.correctAnswers?.includes(opt)
+                      ? "font-semibold text-green-800"
+                      : "text-gray-700"
+                  }
+                >
+                  {opt}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(q.type === "fill_blank" || q.type === "text_answer") && (
+        <div className="ml-4 p-4 bg-green-50 rounded-lg border-2 border-green-200">
+          <div className="text-sm text-green-700 mb-1 font-medium">
+            ✓ Зөв хариулт:
+          </div>
+          <div className="font-semibold text-green-800 mb-2">
+            {q.correctAnswers?.join(", ")}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

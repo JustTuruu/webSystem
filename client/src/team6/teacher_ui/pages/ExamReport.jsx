@@ -1,17 +1,65 @@
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  mockExams,
-  mockExamStats,
-  mockStudentExams,
-} from "../../data/mockData";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const ExamReport = () => {
   const { exam_id } = useParams();
-  const exam = mockExams.find((e) => e.id === parseInt(exam_id));
-  const stats = mockExamStats[exam_id];
-  const studentExams = mockStudentExams.filter(
-    (se) => se.examId === parseInt(exam_id)
-  );
+  const [exam, setExam] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [studentResults, setStudentResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadReportData = async () => {
+      try {
+        const [examData, statsData, studentsData] = await Promise.all([
+          fetchData(`${BASE_URL}/exams/${exam_id}`, "GET"),
+          fetchData(`${BASE_URL}/exams/${exam_id}/stats`, "GET"),
+          fetchData(`${BASE_URL}/exams/${exam_id}/students`, "GET"),
+        ]);
+        setExam(examData);
+        setStats(statsData);
+        setStudentResults(Array.isArray(studentsData) ? studentsData : []);
+      } catch (error) {
+        console.error("⚠️ Failed to fetch exam report:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadReportData();
+  }, [exam_id]);
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      not_started: "bg-gray-100 text-gray-800",
+      in_progress: "bg-blue-100 text-blue-800",
+      completed: "bg-green-100 text-green-800",
+    };
+    const labels = {
+      not_started: "Эхлээгүй",
+      in_progress: "Явагдаж байна",
+      completed: "Дууссан",
+    };
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-medium ${
+          badges[status] || "bg-gray-100 text-gray-700"
+        }`}
+      >
+        {labels[status] || "Тодорхойгүй"}
+      </span>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600">
+        ⏳ Ачааллаж байна...
+      </div>
+    );
+  }
 
   if (!exam || !stats) {
     return (
@@ -29,26 +77,6 @@ const ExamReport = () => {
     );
   }
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      not_started: "bg-gray-100 text-gray-800",
-      in_progress: "bg-blue-100 text-blue-800",
-      completed: "bg-green-100 text-green-800",
-    };
-    const labels = {
-      not_started: "Эхлээгүй",
-      in_progress: "Явагдаж байна",
-      completed: "Дууссан",
-    };
-    return (
-      <span
-        className={`px-3 py-1 rounded-full text-xs font-medium ${badges[status]}`}
-      >
-        {labels[status]}
-      </span>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -63,85 +91,68 @@ const ExamReport = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Шалгалтын тайлан
           </h1>
-          <p className="text-gray-600">{exam.title}</p>
+          <p className="text-gray-600">{exam.title || "Нэргүй шалгалт"}</p>
         </div>
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <div className="text-4xl font-bold text-gray-900 mb-2">
-              {stats.totalStudents}
-            </div>
-            <div className="text-sm text-gray-600">Нийт оролцогчид</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <div className="text-4xl font-bold text-green-600 mb-2">
-              {stats.completedStudents}
-            </div>
-            <div className="text-sm text-gray-600">Дууссан</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <div className="text-4xl font-bold text-blue-600 mb-2">
-              {stats.averageScore}
-            </div>
-            <div className="text-sm text-gray-600">Дундаж оноо</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <div className="text-4xl font-bold text-purple-600 mb-2">
-              {stats.highestScore}
-            </div>
-            <div className="text-sm text-gray-600">Хамгийн өндөр</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-            <div className="text-4xl font-bold text-orange-600 mb-2">
-              {stats.passingRate}%
-            </div>
-            <div className="text-sm text-gray-600">Тэнцсэн хувь</div>
-          </div>
+          <StatCard
+            value={stats.totalStudents}
+            label="Нийт оролцогчид"
+            color="text-gray-900"
+          />
+          <StatCard
+            value={stats.completedStudents}
+            label="Дууссан"
+            color="text-green-600"
+          />
+          <StatCard
+            value={stats.averageScore}
+            label="Дундаж оноо"
+            color="text-blue-600"
+          />
+          <StatCard
+            value={stats.highestScore}
+            label="Хамгийн өндөр"
+            color="text-purple-600"
+          />
+          <StatCard
+            value={`${stats.passingRate}%`}
+            label="Тэнцсэн хувь"
+            color="text-orange-600"
+          />
         </div>
 
-        {/* Score Distribution Chart (Mock) */}
+        {/* Chart (Placeholder) */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">
             Онооны хуваарилалт
           </h2>
           <div className="h-64 flex items-end justify-around gap-4 border-b border-l border-gray-200 p-4">
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className="w-16 bg-red-500 rounded-t"
-                style={{ height: "40%" }}
-              ></div>
-              <div className="text-sm font-medium text-gray-700">0-40</div>
-              <div className="text-xs text-gray-500">5 хүн</div>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className="w-16 bg-orange-500 rounded-t"
-                style={{ height: "60%" }}
-              ></div>
-              <div className="text-sm font-medium text-gray-700">41-60</div>
-              <div className="text-xs text-gray-500">12 хүн</div>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className="w-16 bg-yellow-500 rounded-t"
-                style={{ height: "85%" }}
-              ></div>
-              <div className="text-sm font-medium text-gray-700">61-80</div>
-              <div className="text-xs text-gray-500">18 хүн</div>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className="w-16 bg-green-500 rounded-t"
-                style={{ height: "50%" }}
-              ></div>
-              <div className="text-sm font-medium text-gray-700">81-100</div>
-              <div className="text-xs text-gray-500">10 хүн</div>
-            </div>
+            {/* Placeholder chart for now */}
+            <ChartBar height="40%" color="bg-red-500" range="0-40" count="5" />
+            <ChartBar
+              height="60%"
+              color="bg-orange-500"
+              range="41-60"
+              count="12"
+            />
+            <ChartBar
+              height="85%"
+              color="bg-yellow-500"
+              range="61-80"
+              count="18"
+            />
+            <ChartBar
+              height="50%"
+              color="bg-green-500"
+              range="81-100"
+              count="10"
+            />
           </div>
         </div>
 
-        {/* Student Results Table */}
+        {/* Student Results */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900">
@@ -170,43 +181,54 @@ const ExamReport = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {studentExams.map((studentExam, index) => (
-                  <tr key={studentExam.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {index + 1}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {studentExam.studentName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(studentExam.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {studentExam.score !== null ? (
-                        <span className="font-semibold">
-                          {studentExam.score}/{exam.totalMarks}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {studentExam.score !== null ? (
-                        studentExam.score >= exam.passingMarks ? (
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                            Тэнцсэн
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                            Тэнцээгүй
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
+                {studentResults.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-6 py-8 text-center text-gray-500"
+                    >
+                      Суралцагчдын мэдээлэл байхгүй байна
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  studentResults.map((s, index) => (
+                    <tr key={s.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {s.studentName || "Нэргүй"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(s.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {s.score !== null && s.score !== undefined ? (
+                          <span className="font-semibold">
+                            {s.score}/{exam.totalMarks}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {s.score !== null && s.score !== undefined ? (
+                          s.score >= exam.passingMarks ? (
+                            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                              Тэнцсэн
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                              Тэнцээгүй
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -215,5 +237,21 @@ const ExamReport = () => {
     </div>
   );
 };
+
+// ✅ Reusable components
+const StatCard = ({ value, label, color }) => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+    <div className={`text-4xl font-bold mb-2 ${color}`}>{value}</div>
+    <div className="text-sm text-gray-600">{label}</div>
+  </div>
+);
+
+const ChartBar = ({ height, color, range, count }) => (
+  <div className="flex flex-col items-center gap-2">
+    <div className={`w-16 ${color} rounded-t`} style={{ height }}></div>
+    <div className="text-sm font-medium text-gray-700">{range}</div>
+    <div className="text-xs text-gray-500">{count} хүн</div>
+  </div>
+);
 
 export default ExamReport;

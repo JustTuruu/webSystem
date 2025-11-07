@@ -1,28 +1,53 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { mockExams, mockQuestionBank } from "../../data/mockData";
+import { fetchData } from "../../../utils/fetchData";
+
+const BASE_URL = "https://todu.mn/bs/lms/v1";
 
 const TakeExam = () => {
   const { exam_id, student_id } = useParams();
   const navigate = useNavigate();
 
-  const exam = mockExams.find((e) => e.id === parseInt(exam_id));
-
-  // SessionStorage-аас санамсаргүй сонгогдсон асуултуудын ID-г авах
-  const storedQuestionIds = JSON.parse(
-    sessionStorage.getItem(`exam_${exam_id}_questions`) || "[]"
-  );
-  const questions = storedQuestionIds
-    .map((id) => mockQuestionBank.find((q) => q.id === id))
-    .filter(Boolean);
-
+  const [exam, setExam] = useState(null);
+  const [questions, setQuestions] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [timeRemaining, setTimeRemaining] = useState(
-    exam?.duration * 60 || 1800
-  ); // seconds
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [loading, setLoading] = useState(true);
 
+  // Load exam and questions
   useEffect(() => {
+    const loadExamData = async () => {
+      try {
+        const examData = await fetchData(`${BASE_URL}/exams/${exam_id}`, "GET");
+        const questionData = await fetchData(
+          `${BASE_URL}/exams/${exam_id}/questions`,
+          "GET"
+        );
+
+        setExam(examData);
+        setQuestions(questionData || []);
+        setTimeRemaining((examData?.duration || 30) * 60);
+
+        // Restore saved answers
+        const saved = JSON.parse(
+          sessionStorage.getItem(`exam_${exam_id}_answers`) || "{}"
+        );
+        setAnswers(saved);
+      } catch (error) {
+        console.error("⚠️ Failed to load exam or questions:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadExamData();
+  }, [exam_id]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (!exam) return;
+
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
@@ -34,7 +59,80 @@ const TakeExam = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [exam]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleAnswerChange = (answer) => {
+    const question = questions[currentQuestion];
+    setAnswers((prev) => {
+      const updated = { ...prev, [question.id]: answer };
+      sessionStorage.setItem(
+        `exam_${exam_id}_answers`,
+        JSON.stringify(updated)
+      );
+      return updated;
+    });
+  };
+
+  const handleMultipleCorrectChange = (option) => {
+    const currentQ = questions[currentQuestion];
+    const currentAnswers = answers[currentQ.id] || [];
+    const newAnswers = currentAnswers.includes(option)
+      ? currentAnswers.filter((a) => a !== option)
+      : [...currentAnswers, option];
+
+    setAnswers((prev) => {
+      const updated = { ...prev, [currentQ.id]: newAnswers };
+      sessionStorage.setItem(
+        `exam_${exam_id}_answers`,
+        JSON.stringify(updated)
+      );
+      return updated;
+    });
+  };
+
+  const handleNext = () => {
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      await fetchData(
+        `${BASE_URL}/students/${student_id}/exams/${exam_id}/submit`,
+        "POST",
+        {
+          answers,
+        }
+      );
+
+      sessionStorage.removeItem(`exam_${exam_id}_answers`);
+      navigate(`/team6/student/exams/${exam_id}/students/${student_id}/result`);
+    } catch (error) {
+      console.error("⚠️ Failed to submit exam:", error);
+      alert("Шалгалт илгээхэд алдаа гарлаа. Дахин оролдоно уу.");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600">
+        ⏳ Ачааллаж байна...
+      </div>
+    );
+  }
 
   if (!exam || questions.length === 0) {
     return (
@@ -51,51 +149,6 @@ const TakeExam = () => {
       </div>
     );
   }
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleAnswerChange = (answer) => {
-    setAnswers({
-      ...answers,
-      [questions[currentQuestion].id]: answer,
-    });
-  };
-
-  const handleMultipleCorrectChange = (option) => {
-    const currentQ = questions[currentQuestion];
-    const currentAnswers = answers[currentQ.id] || [];
-    const newAnswers = currentAnswers.includes(option)
-      ? currentAnswers.filter((a) => a !== option)
-      : [...currentAnswers, option];
-
-    setAnswers({
-      ...answers,
-      [currentQ.id]: newAnswers,
-    });
-  };
-
-  const handleNext = () => {
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
-  };
-
-  const handleSubmit = () => {
-    // Хариултуудыг sessionStorage-д хадгалах
-    sessionStorage.setItem(`exam_${exam_id}_answers`, JSON.stringify(answers));
-
-    navigate(`/team6/student/exams/${exam_id}/students/${student_id}/result`);
-  };
 
   const question = questions[currentQuestion];
   const currentAnswer =
@@ -128,11 +181,15 @@ const TakeExam = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-gray-900">{exam.title}</h2>
-              <p className="text-sm text-gray-600">Үйлдлийн систем 7 асуулт</p>
+              <p className="text-sm text-gray-600">
+                {questions.length} асуулт • Нийт {exam.totalMarks} оноо
+              </p>
             </div>
             <div className="text-right">
               <div
-                className={`text-3xl font-bold ${timeRemaining < 300 ? "text-red-600" : "text-gray-900"}`}
+                className={`text-3xl font-bold ${
+                  timeRemaining < 300 ? "text-red-600" : "text-gray-900"
+                }`}
               >
                 ⏱️ {formatTime(timeRemaining)}
               </div>
@@ -175,8 +232,6 @@ const TakeExam = () => {
                 <p className="text-sm text-gray-600">Оноо: {question.marks}</p>
               </div>
             </div>
-
-            {/* Question Image */}
             {question.image && (
               <div className="mt-4 mb-4">
                 <img
@@ -215,66 +270,47 @@ const TakeExam = () => {
                 </label>
               ))}
 
-            {question.type === "multiple_correct" && (
-              <>
-                <p className="text-sm text-gray-600 mb-3">
-                  Бүх зөв хариултыг сонгоно уу
-                </p>
-                {question.options.map((option, index) => (
-                  <label
-                    key={index}
-                    className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      currentAnswer.includes(option)
-                        ? "border-black bg-gray-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        value={option}
-                        checked={currentAnswer.includes(option)}
-                        onChange={() => handleMultipleCorrectChange(option)}
-                        className="w-5 h-5"
-                      />
-                      <span className="text-gray-900 font-medium">
-                        {option}
-                      </span>
-                    </div>
-                  </label>
-                ))}
-              </>
-            )}
+            {question.type === "multiple_correct" &&
+              question.options.map((option, index) => (
+                <label
+                  key={index}
+                  className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    currentAnswer.includes(option)
+                      ? "border-black bg-gray-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      value={option}
+                      checked={currentAnswer.includes(option)}
+                      onChange={() => handleMultipleCorrectChange(option)}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-gray-900 font-medium">{option}</span>
+                  </div>
+                </label>
+              ))}
 
             {question.type === "fill_blank" && (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">Хоосон зайг бөглөнө үү</p>
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                  <p className="text-gray-900 mb-4">{question.question}</p>
-                  <input
-                    type="text"
-                    value={currentAnswer}
-                    onChange={(e) => handleAnswerChange(e.target.value)}
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-black outline-none transition-colors"
-                    placeholder="Хариултаа энд бичнэ үү..."
-                  />
-                </div>
-              </div>
+              <input
+                type="text"
+                value={currentAnswer}
+                onChange={(e) => handleAnswerChange(e.target.value)}
+                className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-black outline-none"
+                placeholder="Хариултаа бичнэ үү..."
+              />
             )}
 
             {question.type === "text_answer" && (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Дэлгэрэнгүй хариултаа бичнэ үү
-                </p>
-                <textarea
-                  value={currentAnswer}
-                  onChange={(e) => handleAnswerChange(e.target.value)}
-                  className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-black outline-none transition-colors resize-none"
-                  rows={6}
-                  placeholder="Хариултаа энд бичнэ үү..."
-                />
-              </div>
+              <textarea
+                value={currentAnswer}
+                onChange={(e) => handleAnswerChange(e.target.value)}
+                className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-black outline-none resize-none"
+                rows={6}
+                placeholder="Хариултаа энд бичнэ үү..."
+              />
             )}
           </div>
         </div>
@@ -289,7 +325,7 @@ const TakeExam = () => {
             ← Өмнөх
           </button>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto">
             {questions.map((_, index) => (
               <button
                 key={index}
@@ -298,8 +334,8 @@ const TakeExam = () => {
                   index === currentQuestion
                     ? "bg-black text-white"
                     : answers[questions[index].id]
-                      ? "bg-green-100 text-green-800 border border-green-300"
-                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                    ? "bg-green-100 text-green-800 border border-green-300"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 {index + 1}
